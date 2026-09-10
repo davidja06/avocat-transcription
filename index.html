@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#1a3a5c">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Transcription Avocat">
+  <title>Transcription Avocat</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <style>
+    :root {
+      --navy: #1a3a5c;
+      --navy-light: #234a73;
+      --navy-dark: #112840;
+      --gold: #c9a227;
+      --gold-light: #f0c94a;
+      --bg: #f7f6f3;
+      --surface: #ffffff;
+      --surface2: #f0ede8;
+      --border: #ddd9d0;
+      --border-strong: #bbb5a8;
+      --text: #1a1916;
+      --text-2: #5a5650;
+      --text-3: #8a8680;
+      --success: #1e6e3c;
+      --success-bg: #eaf5ee;
+      --success-border: #a3d4b2;
+      --danger: #8b1e1e;
+      --danger-bg: #fdf0f0;
+      --danger-border: #e8aaaa;
+      --accent: #1a3a5c;
+      --accent-bg: #eef3f8;
+      --accent-border: #b0c4d8;
+      --radius: 8px;
+      --shadow: 0 1px 4px rgba(0,0,0,0.08), 0 4px 16px rgba(0,0,0,0.06);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      font-size: 15px;
+    }
+
+    .topbar {
+      background: var(--navy);
+      color: #fff;
+      padding: 0 1.25rem;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+    .topbar-left { display: flex; align-items: center; gap: 10px; }
+    .topbar-icon { font-size: 20px; }
+    .topbar-title { font-size: 16px; font-weight: 600; letter-spacing: 0.01em; }
+    .topbar-sub { font-size: 11px; opacity: 0.65; margin-top: 1px; }
+    .badge-secure {
+      font-size: 10px; background: rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 20px; padding: 3px 9px;
+      display: flex; align-items: center; gap: 4px; color: rgba(255,255,255,0.85);
+    }
+
+    .container { max-width: 680px; margin: 0 auto; padding: 1.25rem 1rem 4rem; }
+
+    .step-bar { display: flex; gap: 6px; margin-bottom: 1.25rem; }
+    .step { flex: 1; height: 3px; border-radius: 2px; background: var(--border); transition: background 0.3s; }
+    .step.active { background: var(--gold); }
+    .step.done { background: var(--success); }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem;
+      margin-bottom: 1rem;
+      box-shadow: var(--shadow);
+    }
+    .card-title {
+      font-size: 11px; font-weight: 600; color: var(--text-3);
+      letter-spacing: 0.07em; text-transform: uppercase; margin-bottom: 1rem;
+    }
+
+    .type-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .type-btn {
+      border: 1.5px solid var(--border);
+      border-radius: 10px; padding: 1rem 0.5rem;
+      background: var(--surface); cursor: pointer;
+      text-align: center; transition: all 0.15s;
+    }
+    .type-btn:hover { border-color: var(--navy-light); background: var(--accent-bg); }
+    .type-btn.selected { border: 2px solid var(--navy); background: var(--accent-bg); }
+    .type-btn .ti { font-size: 26px; display: block; margin-bottom: 7px; color: var(--navy); }
+    .type-btn strong { font-size: 13px; font-weight: 600; display: block; color: var(--text); }
+    .type-btn small { font-size: 11px; color: var(--text-3); }
+
+    .divider { border: none; border-top: 1px solid var(--border); margin: 1rem 0; }
+
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .form-full { grid-template-columns: 1fr; }
+    .field { display: flex; flex-direction: column; gap: 4px; }
+    .field label { font-size: 12px; color: var(--text-2); font-weight: 500; }
+    .field input, .field textarea, .field select {
+      font-size: 14px; padding: 9px 11px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      font-family: inherit;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .field input:focus, .field textarea:focus, .field select:focus {
+      outline: none; border-color: var(--navy);
+      box-shadow: 0 0 0 3px rgba(26,58,92,0.12);
+    }
+    .field textarea { resize: vertical; min-height: 72px; line-height: 1.55; }
+
+    .partie-row { display: grid; grid-template-columns: 140px 1fr 32px; gap: 8px; align-items: end; margin-bottom: 8px; }
+    .partie-row select, .partie-row input {
+      font-size: 13px; padding: 9px 10px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: var(--bg); color: var(--text);
+    }
+    .partie-row select:focus, .partie-row input:focus { outline: none; border-color: var(--navy); }
+    .btn-remove {
+      background: transparent; border: 1px solid var(--border);
+      border-radius: var(--radius); width: 32px; height: 38px;
+      cursor: pointer; color: var(--text-3); font-size: 14px;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.15s;
+    }
+    .btn-remove:hover { background: var(--danger-bg); color: var(--danger); border-color: var(--danger-border); }
+    .btn-add {
+      background: transparent; border: 1.5px dashed var(--border-strong);
+      border-radius: var(--radius); padding: 7px 14px; font-size: 12px;
+      cursor: pointer; color: var(--text-2); width: 100%; margin-top: 4px;
+      transition: background 0.15s; font-family: inherit;
+    }
+    .btn-add:hover { background: var(--surface2); }
+
+    .drop-zone {
+      border: 2px dashed var(--border-strong);
+      border-radius: 10px; padding: 1.75rem 1rem;
+      text-align: center; cursor: pointer;
+      transition: all 0.15s; background: var(--bg);
+    }
+    .drop-zone:hover, .drop-zone.dragover { border-color: var(--navy); background: var(--accent-bg); }
+    .drop-zone .drop-icon { font-size: 32px; margin-bottom: 8px; display: block; color: var(--text-3); }
+    .drop-zone p { font-size: 14px; color: var(--text-2); }
+    .drop-zone small { font-size: 12px; color: var(--text-3); margin-top: 4px; display: block; }
+    .drop-zone.has-file { border-color: var(--success-border); background: var(--success-bg); }
+    .drop-zone.has-file .drop-icon, .drop-zone.has-file p { color: var(--success); }
+    #file-input { display: none; }
+
+    .btn-primary {
+      background: var(--navy); color: #fff;
+      border: none; border-radius: var(--radius);
+      padding: 12px 20px; font-size: 15px; font-weight: 600;
+      cursor: pointer; width: 100%; margin-top: 1rem;
+      transition: background 0.15s; font-family: inherit;
+      letter-spacing: 0.01em;
+    }
+    .btn-primary:disabled { background: var(--border-strong); cursor: not-allowed; }
+    .btn-primary:not(:disabled):hover { background: var(--navy-light); }
+    .btn-ghost {
+      background: transparent; border: 1px solid var(--border-strong);
+      border-radius: var(--radius); padding: 10px 16px; font-size: 13px;
+      cursor: pointer; color: var(--text-2); width: 100%;
+      margin-top: 0.5rem; transition: background 0.15s; font-family: inherit;
+    }
+    .btn-ghost:hover { background: var(--surface2); }
+
+    .progress-wrap { margin: 1rem 0; }
+    .progress-label { font-size: 13px; color: var(--text-2); margin-bottom: 7px; display: flex; justify-content: space-between; }
+    .progress-bar { height: 8px; background: var(--surface2); border-radius: 4px; overflow: hidden; border: 1px solid var(--border); }
+    .progress-fill { height: 100%; background: linear-gradient(90deg, var(--navy), var(--gold)); border-radius: 4px; transition: width 0.4s ease; }
+
+    .result-tabs { display: flex; gap: 2px; margin-bottom: 1rem; background: var(--surface2); border-radius: var(--radius); padding: 3px; }
+    .tab-btn {
+      flex: 1; padding: 8px; font-size: 13px; font-weight: 500;
+      border: none; border-radius: 6px; cursor: pointer;
+      background: transparent; color: var(--text-2); transition: all 0.15s;
+      font-family: inherit;
+    }
+    .tab-btn.active { background: var(--surface); color: var(--navy); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+
+    .result-box {
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 1rem;
+      font-size: 13.5px; line-height: 1.75; color: var(--text);
+      white-space: pre-wrap; max-height: 420px;
+      overflow-y: auto; font-family: Georgia, 'Times New Roman', serif;
+    }
+
+    .copy-bar { display: flex; gap: 8px; margin-top: 0.75rem; }
+    .copy-bar button {
+      flex: 1; background: transparent;
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius); padding: 9px 8px; font-size: 12px;
+      cursor: pointer; color: var(--text-2); transition: background 0.15s;
+      font-family: inherit;
+    }
+    .copy-bar button:hover { background: var(--surface2); }
+
+    .error-msg {
+      font-size: 13px; color: var(--danger);
+      background: var(--danger-bg); border: 1px solid var(--danger-border);
+      border-radius: var(--radius); padding: 0.75rem 1rem; margin-top: 0.75rem;
+    }
+
+    .meta-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+    .type-tag {
+      font-size: 11px; padding: 4px 12px; border-radius: 20px;
+      background: var(--accent-bg); color: var(--navy);
+      border: 1px solid var(--accent-border); font-weight: 600;
+    }
+    .meta-info { font-size: 12px; color: var(--text-3); }
+
+    .install-banner {
+      background: var(--navy-dark); color: #fff;
+      border-radius: 10px; padding: 1rem 1.25rem;
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 1rem; margin-bottom: 1rem;
+    }
+    .install-banner p { font-size: 13px; opacity: 0.9; }
+    .btn-install {
+      background: var(--gold); color: var(--navy-dark);
+      border: none; border-radius: var(--radius); padding: 8px 16px;
+      font-size: 13px; font-weight: 700; cursor: pointer;
+      white-space: nowrap; transition: background 0.15s;
+    }
+    .btn-install:hover { background: var(--gold-light); }
+
+    .section-sub { font-size: 11px; color: var(--text-3); margin-bottom: 0.75rem; }
+
+    .hidden { display: none; }
+
+    @media (max-width: 480px) {
+      .form-grid { grid-template-columns: 1fr; }
+      .partie-row { grid-template-columns: 1fr 1fr 32px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <span class="topbar-icon">⚖️</span>
+    <div>
+      <div class="topbar-title">Transcription Avocat</div>
+      <div class="topbar-sub">Compte-rendu juridique structuré</div>
+    </div>
+  </div>
+  <div class="badge-secure">🔒 Confidentiel</div>
+</div>
+
+<div class="container">
+
+  <div id="install-banner" class="install-banner hidden">
+    <p>📲 Installez l'app sur votre bureau pour un accès rapide</p>
+    <button class="btn-install" onclick="installApp()">Installer</button>
+  </div>
+
+  <div class="step-bar">
+    <div class="step active" id="s1"></div>
+    <div class="step" id="s2"></div>
+    <div class="step" id="s3"></div>
+    <div class="step" id="s4"></div>
+  </div>
+
+  <!-- SETUP -->
+  <div id="view-setup">
+
+    <div class="card">
+      <div class="card-title">1. Type de rendez-vous</div>
+      <div class="type-grid">
+        <button class="type-btn" data-type="rdv" onclick="selectType(this)">
+          <span class="ti">👤</span>
+          <strong>RDV client</strong>
+          <small>Consultation</small>
+        </button>
+        <button class="type-btn" data-type="expertise" onclick="selectType(this)">
+          <span class="ti">📋</span>
+          <strong>Expertise</strong>
+          <small>Contradictoire</small>
+        </button>
+        <button class="type-btn" data-type="audience" onclick="selectType(this)">
+          <span class="ti">⚖️</span>
+          <strong>Audience</strong>
+          <small>Plaidoirie</small>
+        </button>
+      </div>
+    </div>
+
+    <div class="card hidden" id="context-card">
+      <div class="card-title">2. Contexte du dossier</div>
+      <p class="section-sub">Ces informations personnalisent la transcription et le compte-rendu.</p>
+
+      <div class="form-grid">
+        <div class="field">
+          <label>Date</label>
+          <input type="date" id="ctx-date">
+        </div>
+        <div class="field">
+          <label id="ctx-lieu-label">Lieu</label>
+          <input type="text" id="ctx-lieu" placeholder="ex. Cabinet Paris 8e">
+        </div>
+      </div>
+      <div class="form-grid" style="margin-top:10px">
+        <div class="field">
+          <label>Référence dossier</label>
+          <input type="text" id="ctx-ref" placeholder="ex. 2024-DUPONT-042">
+        </div>
+        <div class="field">
+          <label>Avocat en charge</label>
+          <input type="text" id="ctx-avocat" placeholder="ex. Me Martin">
+        </div>
+      </div>
+
+      <hr class="divider">
+      <div class="card-title" id="parties-label">Parties</div>
+      <p class="section-sub">Renseignez les noms exacts pour qu'ils apparaissent dans le compte-rendu.</p>
+      <div id="parties-rows"></div>
+      <button class="btn-add" onclick="addPartie()">+ Ajouter une partie</button>
+
+      <div id="expert-section" class="hidden">
+        <hr class="divider">
+        <div class="card-title">Expert</div>
+        <div class="form-grid">
+          <div class="field">
+            <label>Nom de l'expert</label>
+            <input type="text" id="ctx-expert" placeholder="ex. Dr. Lemaire">
+          </div>
+          <div class="field">
+            <label>Spécialité</label>
+            <input type="text" id="ctx-specialite" placeholder="ex. Médecin légiste">
+          </div>
+        </div>
+      </div>
+
+      <div id="juridiction-section" class="hidden">
+        <hr class="divider">
+        <div class="card-title">Juridiction</div>
+        <div class="form-grid">
+          <div class="field">
+            <label>Tribunal</label>
+            <input type="text" id="ctx-tribunal" placeholder="ex. TGI Paris">
+          </div>
+          <div class="field">
+            <label>N° de rôle / RG</label>
+            <input type="text" id="ctx-rg" placeholder="ex. 23/04521">
+          </div>
+        </div>
+        <div class="field" style="margin-top:10px">
+          <label>Président / juge</label>
+          <input type="text" id="ctx-juge" placeholder="ex. M. le Président Durand">
+        </div>
+      </div>
+
+      <hr class="divider">
+      <div class="card-title">Contexte & jargon</div>
+      <div class="field">
+        <label>Résumé du dossier / contexte</label>
+        <textarea id="ctx-contexte" placeholder="ex. Litige suite à accident de la route, client victime, indemnisation du préjudice corporel. Adversaire : AXA Assurances."></textarea>
+      </div>
+      <div class="form-grid" style="margin-top:10px">
+        <div class="field">
+          <label>Termes spécifiques à reconnaître</label>
+          <input type="text" id="ctx-jargon" placeholder="ex. CRCI, IPP, consolidation">
+        </div>
+        <div class="field">
+          <label>Langue de l'enregistrement</label>
+          <select id="ctx-langue">
+            <option value="fr">Français</option>
+            <option value="en">Anglais</option>
+            <option value="es">Espagnol</option>
+            <option value="de">Allemand</option>
+            <option value="it">Italien</option>
+            <option value="ar">Arabe</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="card hidden" id="file-card">
+      <div class="card-title">3. Fichier audio</div>
+      <div class="drop-zone" id="drop-zone"
+           onclick="document.getElementById('file-input').click()"
+           ondragover="onDragOver(event)"
+           ondragleave="onDragLeave(event)"
+           ondrop="onDrop(event)">
+        <span class="drop-icon">🎙️</span>
+        <p id="drop-label">Glissez votre enregistrement ou cliquez pour choisir</p>
+        <small>M4A (iPhone), MP3, WAV, MP4 — max 25 Mo</small>
+      </div>
+      <input type="file" id="file-input" accept=".m4a,.mp3,.wav,.mp4,.ogg,.webm" onchange="onFileSelect(event)">
+      <div id="setup-error" class="error-msg hidden"></div>
+      <button class="btn-primary" id="btn-start" disabled onclick="startTranscription()">
+        ✦ Transcrire et générer le compte-rendu
+      </button>
+    </div>
+
+  </div>
+
+  <!-- PROCESSING -->
+  <div id="view-processing" class="hidden">
+    <div class="card">
+      <div class="card-title">Traitement en cours</div>
+      <div class="progress-wrap">
+        <div class="progress-label">
+          <span id="progress-text">Préparation…</span>
+          <span id="progress-pct">0%</span>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill" id="progress-fill" style="width:0%"></div>
+        </div>
+      </div>
+      <p style="font-size:13px; color:var(--text-3); margin-top:0.75rem" id="progress-sub">Analyse du fichier audio…</p>
+    </div>
+  </div>
+
+  <!-- RESULT -->
+  <div id="view-result" class="hidden">
+    <div class="card">
+      <div class="meta-row">
+        <div>
+          <div class="card-title">Compte-rendu généré</div>
+          <div class="meta-info" id="result-meta"></div>
+        </div>
+        <span class="type-tag" id="type-badge"></span>
+      </div>
+
+      <div class="result-tabs">
+        <button class="tab-btn active" onclick="showTab('transcript')">📝 Transcription</button>
+        <button class="tab-btn" onclick="showTab('summary')">⚖️ Compte-rendu</button>
+      </div>
+
+      <div id="tab-transcript">
+        <div class="result-box" id="transcript-box" style="font-family: -apple-system, sans-serif; font-size:13px"></div>
+        <div class="copy-bar">
+          <button onclick="copyText('transcript-box')">📋 Copier la transcription</button>
+        </div>
+      </div>
+
+      <div id="tab-summary" class="hidden">
+        <div class="result-box" id="summary-box"></div>
+        <div class="copy-bar">
+          <button onclick="copyText('summary-box')">📋 Copier le compte-rendu</button>
+          <button onclick="exportWord()">📄 Exporter en .txt</button>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn-ghost" onclick="reset()">↺ Nouveau fichier</button>
+  </div>
+
+</div>
+
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js').catch(() => {});
+}
+
+let deferredPrompt = null;
+let selectedType = null;
+let selectedFile = null;
+let partieCount = 0;
+
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  document.getElementById('install-banner').classList.remove('hidden');
+});
+
+window.addEventListener('appinstalled', () => {
+  document.getElementById('install-banner').classList.add('hidden');
+  deferredPrompt = null;
+});
+
+async function installApp() {
+  if (!deferredPrompt) {
+    alert('Pour installer : cliquez sur les ⋮ (trois points) de Chrome → "Installer l\'application"');
+    return;
+  }
+  deferredPrompt.prompt();
+  const { outcome } = await deferredPrompt.userChoice;
+  if (outcome === 'accepted') {
+    document.getElementById('install-banner').classList.add('hidden');
+  }
+  deferredPrompt = null;
+}
+
+const TYPE_LABELS = { rdv: 'RDV client', expertise: 'Expertise', audience: 'Audience' };
+const PARTIE_ROLES = {
+  rdv: ['Client', 'Partie adverse', 'Tiers'],
+  expertise: ['Requérant', 'Défendeur', 'Tiers intervenant'],
+  audience: ['Demandeur', 'Défendeur', 'Ministère public', 'Tiers']
+};
+
+function selectType(btn) {
+  document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  selectedType = btn.dataset.type;
+  updateContextForm();
+  document.getElementById('context-card').classList.remove('hidden');
+  document.getElementById('file-card').classList.remove('hidden');
+  checkReady();
+}
+
+function updateContextForm() {
+  const t = selectedType;
+  document.getElementById('expert-section').classList.toggle('hidden', t !== 'expertise');
+  document.getElementById('juridiction-section').classList.toggle('hidden', t !== 'audience');
+  document.getElementById('ctx-lieu-label').textContent = t === 'audience' ? 'Salle d\'audience' : t === 'expertise' ? 'Lieu de l\'expertise' : 'Lieu / cabinet';
+  document.getElementById('parties-label').textContent = t === 'audience' ? 'PARTIES EN CAUSE' : t === 'expertise' ? 'PARTIES À L\'EXPERTISE' : 'PARTIES';
+  const rows = document.getElementById('parties-rows');
+  rows.innerHTML = '';
+  partieCount = 0;
+  (PARTIE_ROLES[t] || ['Client', 'Partie adverse']).slice(0, 2).forEach(r => addPartie(r));
+}
+
+function addPartie(defaultRole) {
+  partieCount++;
+  const id = partieCount;
+  const roles = PARTIE_ROLES[selectedType] || ['Client', 'Partie adverse'];
+  const opts = roles.map(r => `<option value="${r}" ${r === defaultRole ? 'selected' : ''}>${r}</option>`).join('') + '<option value="Autre">Autre</option>';
+  const div = document.createElement('div');
+  div.className = 'partie-row';
+  div.id = 'partie-' + id;
+  div.innerHTML = `
+    <select>${opts}</select>
+    <input type="text" placeholder="Nom complet / raison sociale" id="pnom-${id}">
+    <button class="btn-remove" onclick="removePartie(${id})" title="Supprimer">✕</button>
+  `;
+  document.getElementById('parties-rows').appendChild(div);
+}
+
+function removePartie(id) {
+  const el = document.getElementById('partie-' + id);
+  if (el) el.remove();
+}
+
+function buildContext() {
+  const t = selectedType;
+  const date = document.getElementById('ctx-date').value;
+  const lieu = document.getElementById('ctx-lieu').value;
+  const ref = document.getElementById('ctx-ref').value;
+  const avocat = document.getElementById('ctx-avocat').value;
+  const contexte = document.getElementById('ctx-contexte').value;
+  const jargon = document.getElementById('ctx-jargon').value;
+
+  const parties = [];
+  document.querySelectorAll('.partie-row').forEach(row => {
+    const role = row.querySelector('select')?.value;
+    const nom = row.querySelector('input[type=text]')?.value;
+    if (nom) parties.push(`${role} : ${nom}`);
+  });
+
+  let ctx = '=== CONTEXTE DU DOSSIER ===\n';
+  if (date) ctx += `Date : ${new Date(date + 'T12:00:00').toLocaleDateString('fr-FR', {weekday:'long',year:'numeric',month:'long',day:'numeric'})}\n`;
+  if (lieu) ctx += `Lieu : ${lieu}\n`;
+  if (ref) ctx += `Référence dossier : ${ref}\n`;
+  if (avocat) ctx += `Avocat en charge : ${avocat}\n`;
+  if (parties.length) ctx += `Parties :\n${parties.map(p => '  • ' + p).join('\n')}\n`;
+  if (t === 'expertise') {
+    const expert = document.getElementById('ctx-expert').value;
+    const spe = document.getElementById('ctx-specialite').value;
+    if (expert) ctx += `Expert : ${expert}${spe ? ' (' + spe + ')' : ''}\n`;
+  }
+  if (t === 'audience') {
+    const tribunal = document.getElementById('ctx-tribunal').value;
+    const rg = document.getElementById('ctx-rg').value;
+    const juge = document.getElementById('ctx-juge').value;
+    if (tribunal) ctx += `Juridiction : ${tribunal}\n`;
+    if (rg) ctx += `N° RG : ${rg}\n`;
+    if (juge) ctx += `Président : ${juge}\n`;
+  }
+  if (contexte) ctx += `Contexte : ${contexte}\n`;
+  if (jargon) ctx += `Termes spécifiques : ${jargon}\n`;
+  ctx += '===\n\n';
+  return ctx;
+}
+
+function buildPrompt(transcript) {
+  const ctx = buildContext();
+  const plans = {
+    rdv: `1. INFORMATIONS GÉNÉRALES\nType, date, lieu, parties présentes, objet en une phrase.\n\n2. EXPOSÉ DES FAITS\nRésumé factuel et chronologique en langage juridique sobre.\n\n3. POSITION ET DEMANDES DU CLIENT\nAttentes, contraintes, ce qu'il souhaite obtenir.\n\n4. POINTS JURIDIQUES IDENTIFIÉS\nQualifications, fondements légaux, problématiques soulevées.\n\n5. POINTS DE VIGILANCE\nÉléments flous, contradictions, risques procéduraux, délais.\n\n6. ACTIONS À SUIVRE\nListe numérotée avec priorité (URGENT / Normal).\n\n7. QUESTIONS EN SUSPENS\nCe qui nécessite un complément d'information.`,
+    expertise: `1. INFORMATIONS GÉNÉRALES\nType, date, lieu, parties, expert, objet en une phrase.\n\n2. EXPOSÉ DES FAITS EXPERTISÉS\nRésumé factuel des éléments soumis à l'expert.\n\n3. POINTS CONSENSUELS\nÉléments sur lesquels les parties et l'expert s'accordent.\n\n4. POINTS DE DÉSACCORD\nPositions antagonistes, réserves formulées.\n\n5. POSITION ET CONCLUSIONS DE L'EXPERT\nMéthodes retenues, conclusions provisoires ou définitives.\n\n6. POINTS DE VIGILANCE\nÉléments flous, risques pour notre client.\n\n7. ACTIONS À SUIVRE\nDires à déposer, pièces à produire — priorité (URGENT / Normal).\n\n8. QUESTIONS EN SUSPENS\nCe qui nécessite un complément d'expertise.`,
+    audience: `1. INFORMATIONS GÉNÉRALES\nJuridiction, RG, date, parties, objet en une phrase.\n\n2. ARGUMENTS PLAIDÉS — NOTRE PARTIE\nMoyens et arguments développés pour notre client.\n\n3. ARGUMENTS PLAIDÉS — PARTIE ADVERSE\nMoyens et arguments de la partie adverse.\n\n4. QUESTIONS ET OBSERVATIONS DU TRIBUNAL\nQuestions posées, observations de la juridiction.\n\n5. DÉCISION OU RENVOI PRONONCÉ\nCe qui a été décidé, ordonné, renvoyé.\n\n6. POINTS DE VIGILANCE\nSignaux sur l'appréciation du dossier, risques identifiés.\n\n7. ACTIONS À SUIVRE\nDiligences post-audience, délais impératifs — priorité (URGENT / Normal).\n\n8. PROCHAINE ÉTAPE PROCÉDURALE\nDate, nature et objet de la prochaine échéance.`
+  };
+  return `Tu es l'assistant d'un avocat. Voici le contexte du dossier suivi de la transcription brute d'un ${TYPE_LABELS[selectedType].toLowerCase()}.
+
+Consignes :
+- Utilise les vrais noms des parties (fournis dans le contexte) dès que tu les identifies avec certitude dans la transcription
+- Adopte un style de compte-rendu professionnel juridique, sobre et précis
+- Ne commente pas la transcription elle-même
+- Structure le document selon le plan ci-dessous exactement
+
+PLAN DU COMPTE-RENDU :
+${plans[selectedType]}
+
+${ctx}TRANSCRIPTION :
+${transcript}`;
+}
+
+function checkReady() {
+  document.getElementById('btn-start').disabled = !(selectedType && selectedFile);
+}
+
+function onDragOver(e) { e.preventDefault(); document.getElementById('drop-zone').classList.add('dragover'); }
+function onDragLeave() { document.getElementById('drop-zone').classList.remove('dragover'); }
+function onDrop(e) { e.preventDefault(); document.getElementById('drop-zone').classList.remove('dragover'); if (e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]); }
+function onFileSelect(e) { if (e.target.files[0]) setFile(e.target.files[0]); }
+
+function setFile(file) {
+  const err = document.getElementById('setup-error');
+  if (file.size > 25 * 1024 * 1024) {
+    err.textContent = 'Fichier trop volumineux (max 25 Mo). Découpez l\'enregistrement en parties.';
+    err.classList.remove('hidden'); return;
+  }
+  err.classList.add('hidden');
+  selectedFile = file;
+  document.getElementById('drop-zone').classList.add('has-file');
+  document.getElementById('drop-label').textContent = `✓ ${file.name} (${(file.size / 1024 / 1024).toFixed(1)} Mo)`;
+  checkReady();
+}
+
+function setProgress(pct, label, sub) {
+  document.getElementById('progress-fill').style.width = pct + '%';
+  document.getElementById('progress-pct').textContent = pct + '%';
+  if (label) document.getElementById('progress-text').textContent = label;
+  if (sub) document.getElementById('progress-sub').textContent = sub;
+}
+
+function setStep(n) {
+  for (let i = 1; i <= 4; i++) {
+    const el = document.getElementById('s' + i);
+    el.className = 'step' + (i < n ? ' done' : i === n ? ' active' : '');
+  }
+}
+
+async function startTranscription() {
+  document.getElementById('view-setup').classList.add('hidden');
+  document.getElementById('view-processing').classList.remove('hidden');
+  setStep(3);
+  try {
+    setProgress(10, 'Lecture du fichier audio…', 'Préparation en cours…');
+    await sleep(400);
+    setProgress(25, 'Transcription audio…', 'Envoi à l\'API de transcription…');
+    const transcript = await transcribeAudio();
+    setProgress(65, 'Transcription obtenue…', 'Analyse juridique et structuration…');
+    await sleep(300);
+    const summary = await generateSummary(transcript);
+    setProgress(100, 'Compte-rendu prêt', 'Traitement terminé avec succès.');
+    await sleep(500);
+    showResult(transcript, summary);
+  } catch (e) {
+    document.getElementById('view-processing').classList.add('hidden');
+    document.getElementById('view-setup').classList.remove('hidden');
+    const err = document.getElementById('setup-error');
+    err.textContent = 'Erreur : ' + e.message;
+    err.classList.remove('hidden');
+    setStep(2);
+  }
+}
+
+async function transcribeAudio() {
+  const langue = document.getElementById('ctx-langue').value;
+  const jargon = document.getElementById('ctx-jargon').value;
+  const parties = [];
+  document.querySelectorAll('.partie-row').forEach(row => {
+    const nom = row.querySelector('input[type=text]')?.value;
+    if (nom) parties.push(nom);
+  });
+
+  const base64 = await fileToBase64(selectedFile);
+  const mime = selectedFile.type || 'audio/m4a';
+
+  const instruction = `Transcris intégralement cet enregistrement audio en ${langue === 'fr' ? 'français' : langue}. Retourne uniquement la transcription brute, sans commentaire ni mise en forme. Identifie les interlocuteurs distincts avec leur tour de parole (ex : "Interlocuteur A :", "Interlocuteur B :").${parties.length ? ' Ces noms peuvent apparaître dans l\'enregistrement — utilise-les si tu les reconnais avec certitude : ' + parties.join(', ') + '.' : ''}${jargon ? ' Termes spécifiques à reconnaître : ' + jargon + '.' : ''}`;
+
+  const resp = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 4000,
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'document', source: { type: 'base64', media_type: mime, data: base64 } },
+          { type: 'text', text: instruction }
+        ]
+      }]
+    })
+  });
+
+  if (!resp.ok) throw new Error('Impossible de transcrire l\'audio. Vérifiez votre connexion internet.');
+  const data = await resp.json();
+  const text = data.content?.filter(b => b.type === 'text').map(b => b.text).join('');
+  if (!text) throw new Error('Transcription vide. Vérifiez que le fichier contient de la parole audible.');
+  return text;
+}
+
+async function generateSummary(transcript) {
+  const prompt = buildPrompt(transcript);
+  const resp = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 2500,
+      messages: [{ role: 'user', content: prompt }]
+    })
+  });
+  if (!resp.ok) throw new Error('Impossible de générer le compte-rendu. Vérifiez votre connexion.');
+  const data = await resp.json();
+  return data.content?.filter(b => b.type === 'text').map(b => b.text).join('') || '';
+}
+
+function showResult(transcript, summary) {
+  document.getElementById('view-processing').classList.add('hidden');
+  document.getElementById('view-result').classList.remove('hidden');
+  setStep(4);
+  document.getElementById('transcript-box').textContent = transcript;
+  document.getElementById('summary-box').textContent = summary;
+  document.getElementById('type-badge').textContent = TYPE_LABELS[selectedType];
+  const date = document.getElementById('ctx-date').value;
+  const ref = document.getElementById('ctx-ref').value;
+  document.getElementById('result-meta').textContent = [selectedFile.name, ref, date ? new Date(date + 'T12:00:00').toLocaleDateString('fr-FR') : ''].filter(Boolean).join(' · ');
+  showTab('summary');
+}
+
+function showTab(tab) {
+  document.getElementById('tab-transcript').classList.toggle('hidden', tab !== 'transcript');
+  document.getElementById('tab-summary').classList.toggle('hidden', tab !== 'summary');
+  document.querySelectorAll('.tab-btn').forEach((b, i) => {
+    b.classList.toggle('active', (i === 0 && tab === 'transcript') || (i === 1 && tab === 'summary'));
+  });
+}
+
+function copyText(id) {
+  const text = document.getElementById(id).textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = event.target.closest('button');
+    const orig = btn.textContent;
+    btn.textContent = '✓ Copié !';
+    setTimeout(() => btn.textContent = orig, 1800);
+  });
+}
+
+function exportWord() {
+  const ref = document.getElementById('ctx-ref').value || 'dossier';
+  const date = document.getElementById('ctx-date').value || new Date().toISOString().slice(0, 10);
+  const summary = document.getElementById('summary-box').textContent;
+  const transcript = document.getElementById('transcript-box').textContent;
+  const content = `COMPTE-RENDU — ${TYPE_LABELS[selectedType].toUpperCase()}\nRéférence : ${ref} | Date : ${date}\n${'='.repeat(60)}\n\n${summary}\n\n${'='.repeat(60)}\nTRANSCRIPTION BRUTE\n${'='.repeat(60)}\n\n${transcript}`;
+  const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `CR_${ref}_${date}.txt`;
+  a.click(); URL.revokeObjectURL(url);
+}
+
+function reset() {
+  selectedType = null; selectedFile = null; partieCount = 0;
+  document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('selected'));
+  ['context-card', 'file-card'].forEach(id => document.getElementById(id).classList.add('hidden'));
+  document.getElementById('drop-zone').classList.remove('has-file');
+  document.getElementById('drop-label').textContent = 'Glissez votre enregistrement ou cliquez pour choisir';
+  document.getElementById('file-input').value = '';
+  document.getElementById('setup-error').classList.add('hidden');
+  document.getElementById('btn-start').disabled = true;
+  document.getElementById('view-result').classList.add('hidden');
+  document.getElementById('view-setup').classList.remove('hidden');
+  ['ctx-date','ctx-lieu','ctx-ref','ctx-avocat','ctx-contexte','ctx-jargon','ctx-expert','ctx-specialite','ctx-tribunal','ctx-rg','ctx-juge'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  document.getElementById('parties-rows').innerHTML = '';
+  setStep(1); setProgress(0, 'Préparation…', '');
+}
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result.split(',')[1]);
+    r.onerror = reject;
+    r.readAsDataURL(file);
+  });
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+</script>
+</body>
+</html>
