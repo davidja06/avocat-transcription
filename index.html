@@ -11,6 +11,29 @@
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <style>
+    .api-screen {
+      min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      padding: 2rem 1rem; background: var(--bg);
+    }
+    .api-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 16px; padding: 2rem; max-width: 480px; width: 100%;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+    }
+    .api-logo { font-size: 40px; text-align: center; margin-bottom: 1rem; }
+    .api-card h2 { font-size: 20px; font-weight: 700; color: var(--navy); text-align: center; margin-bottom: 0.5rem; }
+    .api-card p { font-size: 13px; color: var(--text-2); text-align: center; margin-bottom: 1.5rem; line-height: 1.6; }
+    .api-steps { background: var(--accent-bg); border: 1px solid var(--accent-border); border-radius: var(--radius); padding: 1rem; margin-bottom: 1.25rem; font-size: 12.5px; color: var(--text-2); line-height: 1.8; }
+    .api-steps ol { padding-left: 1.25rem; }
+    .api-steps a { color: var(--navy); font-weight: 600; }
+    .api-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 1rem; }
+    .api-field label { font-size: 12px; font-weight: 600; color: var(--text-2); }
+    .api-field input { font-size: 13px; padding: 10px 12px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--bg); color: var(--text); font-family: monospace; letter-spacing: 0.02em; }
+    .api-field input:focus { outline: none; border-color: var(--navy); box-shadow: 0 0 0 3px rgba(26,58,92,0.12); }
+    .api-note { font-size: 11px; color: var(--text-3); text-align: center; margin-top: 0.75rem; line-height: 1.5; }
+    .api-error { font-size: 12px; color: var(--danger); background: var(--danger-bg); border: 1px solid var(--danger-border); border-radius: var(--radius); padding: 0.6rem 0.9rem; margin-top: 0.5rem; }
+  </style>
+  <style>
     :root {
       --navy: #1a3a5c;
       --navy-light: #234a73;
@@ -255,7 +278,36 @@
 </head>
 <body>
 
-<div class="topbar">
+<!-- ÉCRAN CLÉ API GROQ -->
+<div id="view-api" class="hidden">
+  <div class="api-screen">
+    <div class="api-card">
+      <div class="api-logo">⚖️</div>
+      <h2>Transcription Avocat</h2>
+      <p>L'application utilise <strong>Groq</strong> — service gratuit et sans limite.<br>Une clé API gratuite suffit pour démarrer.</p>
+      <div class="api-steps">
+        <strong>Obtenir votre clé gratuite en 2 minutes :</strong>
+        <ol style="margin-top:8px">
+          <li>Allez sur <a href="https://console.groq.com" target="_blank">console.groq.com</a></li>
+          <li>Créez un compte gratuit (Google ou email)</li>
+          <li>Cliquez sur <strong>API Keys</strong> → <strong>Create API Key</strong></li>
+          <li>Donnez-lui un nom (ex. "Avocat") → <strong>Submit</strong></li>
+          <li>Copiez la clé (commence par <code>gsk_</code>)</li>
+          <li>Collez-la ci-dessous</li>
+        </ol>
+      </div>
+      <div class="api-field">
+        <label>Clé API Groq (gratuite)</label>
+        <input type="password" id="api-key-input" placeholder="gsk_..." autocomplete="off" oninput="clearApiError()">
+      </div>
+      <div id="api-error" class="api-error hidden"></div>
+      <button class="btn-primary" onclick="saveApiKey()" style="margin-top:0.75rem">Enregistrer et continuer →</button>
+      <p class="api-note">🔒 La clé est sauvegardée uniquement sur votre appareil.<br>Elle n'est jamais transmise à un tiers.<br><br>✅ Groq est gratuit · Sans abonnement · Sans carte bancaire</p>
+    </div>
+  </div>
+</div>
+
+<div class="topbar hidden" id="topbar-main">
   <div class="topbar-left">
     <span class="topbar-icon">⚖️</span>
     <div>
@@ -263,10 +315,13 @@
       <div class="topbar-sub">Compte-rendu juridique structuré</div>
     </div>
   </div>
-  <div class="badge-secure">🔒 Confidentiel</div>
+  <div style="display:flex; align-items:center; gap:10px">
+    <div class="badge-secure">🔒 Confidentiel</div>
+    <button onclick="showApiScreen()" title="Changer la clé API" style="background:rgba(255,255,255,0.15); border:none; border-radius:6px; padding:5px 8px; cursor:pointer; color:#fff; font-size:16px;">⚙️</button>
+  </div>
 </div>
 
-<div class="container">
+<div class="container hidden" id="container-main">
 
   <div id="install-banner" class="install-banner hidden">
     <p>📲 Installez l'app sur votre bureau pour un accès rapide</p>
@@ -477,6 +532,44 @@ let deferredPrompt = null;
 let selectedType = null;
 let selectedFile = null;
 let partieCount = 0;
+let API_KEY = localStorage.getItem('groq_api_key') || '';
+
+function initApp() {
+  if (!API_KEY) {
+    document.getElementById('view-api').classList.remove('hidden');
+    document.getElementById('topbar-main').classList.add('hidden');
+    document.getElementById('container-main').classList.add('hidden');
+  } else {
+    document.getElementById('view-api').classList.add('hidden');
+    document.getElementById('topbar-main').classList.remove('hidden');
+    document.getElementById('container-main').classList.remove('hidden');
+  }
+}
+
+function saveApiKey() {
+  const key = document.getElementById('api-key-input').value.trim();
+  if (!key.startsWith('gsk_')) {
+    document.getElementById('api-error').textContent = 'Clé invalide. Elle doit commencer par gsk_  — vérifiez sur console.groq.com';
+    document.getElementById('api-error').classList.remove('hidden');
+    return;
+  }
+  API_KEY = key;
+  localStorage.setItem('groq_api_key', key);
+  initApp();
+}
+
+function clearApiError() {
+  document.getElementById('api-error').classList.add('hidden');
+}
+
+function showApiScreen() {
+  document.getElementById('api-key-input').value = API_KEY;
+  document.getElementById('view-api').classList.remove('hidden');
+  document.getElementById('topbar-main').classList.add('hidden');
+  document.getElementById('container-main').classList.add('hidden');
+}
+
+window.addEventListener('load', initApp);
 
 window.addEventListener('beforeinstallprompt', e => {
   e.preventDefault();
@@ -690,43 +783,73 @@ async function transcribeAudio() {
 
   const instruction = `Transcris intégralement cet enregistrement audio en ${langue === 'fr' ? 'français' : langue}. Retourne uniquement la transcription brute, sans commentaire ni mise en forme. Identifie les interlocuteurs distincts avec leur tour de parole (ex : "Interlocuteur A :", "Interlocuteur B :").${parties.length ? ' Ces noms peuvent apparaître dans l\'enregistrement — utilise-les si tu les reconnais avec certitude : ' + parties.join(', ') + '.' : ''}${jargon ? ' Termes spécifiques à reconnaître : ' + jargon + '.' : ''}`;
 
-  const resp = await fetch('https://api.anthropic.com/v1/messages', {
+  // Transcription via Groq Whisper
+  const formData = new FormData();
+  formData.append('file', selectedFile, selectedFile.name);
+  formData.append('model', 'whisper-large-v3');
+  formData.append('language', langue);
+  formData.append('response_format', 'verbose_json');
+
+  const resp = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 4000,
-      messages: [{
-        role: 'user',
-        content: [
-          { type: 'document', source: { type: 'base64', media_type: mime, data: base64 } },
-          { type: 'text', text: instruction }
-        ]
-      }]
-    })
+    headers: { 'Authorization': 'Bearer ' + API_KEY },
+    body: formData
   });
 
-  if (!resp.ok) throw new Error('Impossible de transcrire l\'audio. Vérifiez votre connexion internet.');
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({}));
+    throw new Error('Transcription impossible : ' + (err?.error?.message || 'vérifiez votre clé Groq'));
+  }
   const data = await resp.json();
-  const text = data.content?.filter(b => b.type === 'text').map(b => b.text).join('');
+  let text = data.text || '';
+
+  // Reformater avec identification des interlocuteurs si disponible
+  if (data.segments && data.segments.length > 0) {
+    text = data.segments.map(s => s.text.trim()).join('\n');
+  }
+
   if (!text) throw new Error('Transcription vide. Vérifiez que le fichier contient de la parole audible.');
+
+  // Ajout du contexte noms/jargon via post-traitement Groq LLM
+  if (parties.length || jargon) {
+    const cleanResp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + API_KEY },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        max_tokens: 4000,
+        messages: [{
+          role: 'user',
+          content: `Voici une transcription audio brute. Identifie les interlocuteurs distincts (indique "Interlocuteur A :", "Interlocuteur B :" etc).${parties.length ? ' Si tu reconnais avec certitude les voix ou le contexte correspondant à ces noms, utilise-les : ' + parties.join(', ') + '.' : ''}${jargon ? ' Termes spécifiques du domaine : ' + jargon + '.' : ''} Retourne uniquement la transcription reformatée, sans commentaire.\n\nTRANSCRIPTION :\n${text}`
+        }]
+      })
+    });
+    if (cleanResp.ok) {
+      const cleanData = await cleanResp.json();
+      text = cleanData.choices?.[0]?.message?.content || text;
+    }
+  }
+
   return text;
 }
 
 async function generateSummary(transcript) {
   const prompt = buildPrompt(transcript);
-  const resp = await fetch('https://api.anthropic.com/v1/messages', {
+  const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + API_KEY },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 2500,
+      model: 'llama-3.3-70b-versatile',
+      max_tokens: 3000,
       messages: [{ role: 'user', content: prompt }]
     })
   });
-  if (!resp.ok) throw new Error('Impossible de générer le compte-rendu. Vérifiez votre connexion.');
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({}));
+    throw new Error('Compte-rendu impossible : ' + (err?.error?.message || 'vérifiez votre clé Groq'));
+  }
   const data = await resp.json();
-  return data.content?.filter(b => b.type === 'text').map(b => b.text).join('') || '';
+  return data.choices?.[0]?.message?.content || '';
 }
 
 function showResult(transcript, summary) {
