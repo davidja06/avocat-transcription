@@ -782,13 +782,6 @@ async function transcribeAudio() {
     if (nom) parties.push(nom);
   });
 
-  const base64 = await fileToBase64(selectedFile);
-  const mime = selectedFile.type || 'audio/m4a';
-
-  const instruction = `Transcris intégralement cet enregistrement audio en ${langue === 'fr' ? 'français' : langue}. Retourne uniquement la transcription brute, sans commentaire ni mise en forme. Identifie les interlocuteurs distincts avec leur tour de parole (ex : "Interlocuteur A :", "Interlocuteur B :").${parties.length ? ' Ces noms peuvent apparaître dans l\'enregistrement — utilise-les si tu les reconnais avec certitude : ' + parties.join(', ') + '.' : ''}${jargon ? ' Termes spécifiques à reconnaître : ' + jargon + '.' : ''}`;
-
-  // Transcription via Mistral (Voix → Texte)
-  // Mistral n'a pas encore d'API audio native — on utilise leur modèle multimodal pour transcrire
   const base64audio = await fileToBase64(selectedFile);
   const mime = selectedFile.type || 'audio/m4a';
 
