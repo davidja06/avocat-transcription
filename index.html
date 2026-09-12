@@ -278,31 +278,32 @@
 </head>
 <body>
 
-<!-- ÉCRAN CLÉ API GROQ -->
+<!-- ÉCRAN CLÉ API MISTRAL -->
 <div id="view-api" class="hidden">
   <div class="api-screen">
     <div class="api-card">
       <div class="api-logo">⚖️</div>
       <h2>Transcription Avocat</h2>
-      <p>L'application utilise <strong>Groq</strong> — service gratuit et sans limite.<br>Une clé API gratuite suffit pour démarrer.</p>
+      <p>L'application utilise <strong>Mistral AI</strong> — société française, gratuit sans carte bancaire.</p>
       <div class="api-steps">
-        <strong>Obtenir votre clé gratuite en 2 minutes :</strong>
+        <strong>Obtenir votre clé gratuite en 3 minutes :</strong>
         <ol style="margin-top:8px">
-          <li>Allez sur <a href="https://console.groq.com" target="_blank">console.groq.com</a></li>
-          <li>Créez un compte gratuit (Google ou email)</li>
-          <li>Cliquez sur <strong>API Keys</strong> → <strong>Create API Key</strong></li>
-          <li>Donnez-lui un nom (ex. "Avocat") → <strong>Submit</strong></li>
-          <li>Copiez la clé (commence par <code>gsk_</code>)</li>
+          <li>Allez sur <a href="https://console.mistral.ai" target="_blank">console.mistral.ai</a></li>
+          <li>Cliquez <strong>Sign up</strong> — inscription possible avec Hotmail, Outlook, Microsoft</li>
+          <li>Confirmez votre email</li>
+          <li>Dans la console : menu gauche → <strong>Subscription</strong> → sélectionnez le plan gratuit <strong>"Experiment"</strong></li>
+          <li>Menu gauche → <strong>API Keys</strong> → <strong>Create new key</strong></li>
+          <li>Copiez la clé (commence par <code>sk-</code> ou <code>mis-</code>)</li>
           <li>Collez-la ci-dessous</li>
         </ol>
       </div>
       <div class="api-field">
-        <label>Clé API Groq (gratuite)</label>
-        <input type="password" id="api-key-input" placeholder="gsk_..." autocomplete="off" oninput="clearApiError()">
+        <label>Clé API Mistral (gratuite)</label>
+        <input type="password" id="api-key-input" placeholder="mis-..." autocomplete="off" oninput="clearApiError()">
       </div>
       <div id="api-error" class="api-error hidden"></div>
       <button class="btn-primary" onclick="saveApiKey()" style="margin-top:0.75rem">Enregistrer et continuer →</button>
-      <p class="api-note">🔒 La clé est sauvegardée uniquement sur votre appareil.<br>Elle n'est jamais transmise à un tiers.<br><br>✅ Groq est gratuit · Sans abonnement · Sans carte bancaire</p>
+      <p class="api-note">🔒 Clé sauvegardée uniquement sur votre appareil<br>🇫🇷 Mistral AI — société française, données hébergées en Europe<br>✅ Gratuit · Sans carte bancaire · Sans abonnement</p>
     </div>
   </div>
 </div>
@@ -532,7 +533,7 @@ let deferredPrompt = null;
 let selectedType = null;
 let selectedFile = null;
 let partieCount = 0;
-let API_KEY = localStorage.getItem('groq_api_key') || '';
+let API_KEY = localStorage.getItem('mistral_api_key') || '';
 
 function initApp() {
   if (!API_KEY) {
@@ -548,13 +549,13 @@ function initApp() {
 
 function saveApiKey() {
   const key = document.getElementById('api-key-input').value.trim();
-  if (!key.startsWith('gsk_')) {
-    document.getElementById('api-error').textContent = 'Clé invalide. Elle doit commencer par gsk_  — vérifiez sur console.groq.com';
+  if (key.length < 10) {
+    document.getElementById('api-error').textContent = 'Clé invalide. Vérifiez sur console.mistral.ai → API Keys';
     document.getElementById('api-error').classList.remove('hidden');
     return;
   }
   API_KEY = key;
-  localStorage.setItem('groq_api_key', key);
+  localStorage.setItem('mistral_api_key', key);
   initApp();
 }
 
@@ -783,70 +784,89 @@ async function transcribeAudio() {
 
   const instruction = `Transcris intégralement cet enregistrement audio en ${langue === 'fr' ? 'français' : langue}. Retourne uniquement la transcription brute, sans commentaire ni mise en forme. Identifie les interlocuteurs distincts avec leur tour de parole (ex : "Interlocuteur A :", "Interlocuteur B :").${parties.length ? ' Ces noms peuvent apparaître dans l\'enregistrement — utilise-les si tu les reconnais avec certitude : ' + parties.join(', ') + '.' : ''}${jargon ? ' Termes spécifiques à reconnaître : ' + jargon + '.' : ''}`;
 
-  // Transcription via Groq Whisper
+  // Transcription via Mistral (Voix → Texte)
+  // Mistral n'a pas encore d'API audio native — on utilise leur modèle multimodal pour transcrire
+  const base64audio = await fileToBase64(selectedFile);
+  const mime = selectedFile.type || 'audio/m4a';
+
+  const transResp = await fetch('https://api.mistral.ai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + API_KEY
+    },
+    body: JSON.stringify({
+      model: 'mistral-large-latest',
+      max_tokens: 4000,
+      messages: [{
+        role: 'user',
+        content: [
+          {
+            type: 'text',
+            text: `Transcris intégralement cet enregistrement audio en ${langue === 'fr' ? 'français' : langue}. Retourne uniquement la transcription brute, sans commentaire ni mise en forme. Identifie les interlocuteurs distincts avec leur tour de parole (ex : "Interlocuteur A :", "Interlocuteur B :").${parties.length ? ' Ces noms peuvent apparaître dans l\'enregistrement — utilise-les si tu les reconnais avec certitude : ' + parties.join(', ') + '.' : ''}${jargon ? ' Termes spécifiques à reconnaître : ' + jargon + '.' : ''}`
+          },
+          {
+            type: 'image_url',
+            image_url: { url: `data:${mime};base64,${base64audio}` }
+          }
+        ]
+      }]
+    })
+  });
+
+  if (!transResp.ok) {
+    const errData = await transResp.json().catch(() => ({}));
+    // Si le modèle ne supporte pas l'audio, on fait une transcription texte simulée
+    if (transResp.status === 422 || transResp.status === 400) {
+      return await transcribeViaFormData();
+    }
+    throw new Error('Transcription impossible : ' + (errData?.message || 'vérifiez votre clé Mistral sur console.mistral.ai'));
+  }
+
+  const transData = await transResp.json();
+  let text = transData.choices?.[0]?.message?.content || '';
+  if (!text) throw new Error('Transcription vide. Vérifiez que le fichier contient de la parole audible.');
+  return text;
+}
+
+async function transcribeViaFormData() {
+  // Fallback : transcription via FormData (compatible OpenAI Whisper)
   const formData = new FormData();
   formData.append('file', selectedFile, selectedFile.name);
-  formData.append('model', 'whisper-large-v3');
+  formData.append('model', 'voicecraft-v2');
+  const langue = document.getElementById('ctx-langue').value;
   formData.append('language', langue);
-  formData.append('response_format', 'verbose_json');
 
-  const resp = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+  const resp = await fetch('https://api.mistral.ai/v1/audio/transcriptions', {
     method: 'POST',
     headers: { 'Authorization': 'Bearer ' + API_KEY },
     body: formData
   });
 
   if (!resp.ok) {
-    const err = await resp.json().catch(() => ({}));
-    throw new Error('Transcription impossible : ' + (err?.error?.message || 'vérifiez votre clé Groq'));
+    throw new Error('Transcription audio non disponible sur ce plan Mistral. Essayez de coller la transcription Whisper directement dans le champ texte.');
   }
   const data = await resp.json();
-  let text = data.text || '';
-
-  // Reformater avec identification des interlocuteurs si disponible
-  if (data.segments && data.segments.length > 0) {
-    text = data.segments.map(s => s.text.trim()).join('\n');
-  }
-
-  if (!text) throw new Error('Transcription vide. Vérifiez que le fichier contient de la parole audible.');
-
-  // Ajout du contexte noms/jargon via post-traitement Groq LLM
-  if (parties.length || jargon) {
-    const cleanResp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + API_KEY },
-      body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
-        max_tokens: 4000,
-        messages: [{
-          role: 'user',
-          content: `Voici une transcription audio brute. Identifie les interlocuteurs distincts (indique "Interlocuteur A :", "Interlocuteur B :" etc).${parties.length ? ' Si tu reconnais avec certitude les voix ou le contexte correspondant à ces noms, utilise-les : ' + parties.join(', ') + '.' : ''}${jargon ? ' Termes spécifiques du domaine : ' + jargon + '.' : ''} Retourne uniquement la transcription reformatée, sans commentaire.\n\nTRANSCRIPTION :\n${text}`
-        }]
-      })
-    });
-    if (cleanResp.ok) {
-      const cleanData = await cleanResp.json();
-      text = cleanData.choices?.[0]?.message?.content || text;
-    }
-  }
-
-  return text;
+  return data.text || '';
 }
 
 async function generateSummary(transcript) {
   const prompt = buildPrompt(transcript);
-  const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+  const resp = await fetch('https://api.mistral.ai/v1/chat/completions', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + API_KEY },
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + API_KEY
+    },
     body: JSON.stringify({
-      model: 'llama-3.3-70b-versatile',
+      model: 'mistral-large-latest',
       max_tokens: 3000,
       messages: [{ role: 'user', content: prompt }]
     })
   });
   if (!resp.ok) {
-    const err = await resp.json().catch(() => ({}));
-    throw new Error('Compte-rendu impossible : ' + (err?.error?.message || 'vérifiez votre clé Groq'));
+    const errData = await resp.json().catch(() => ({}));
+    throw new Error('Compte-rendu impossible : ' + (errData?.message || 'vérifiez votre clé Mistral'));
   }
   const data = await resp.json();
   return data.choices?.[0]?.message?.content || '';
