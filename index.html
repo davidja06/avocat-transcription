@@ -526,7 +526,10 @@
 
 <script>
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js').catch(() => {});
+  // Désinscrire tous les anciens service workers pour éviter les conflits de cache
+  navigator.serviceWorker.getRegistrations().then(registrations => {
+    registrations.forEach(r => r.unregister());
+  });
 }
 
 let deferredPrompt = null;
