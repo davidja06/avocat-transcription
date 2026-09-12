@@ -452,19 +452,39 @@
 
     <div class="card hidden" id="file-card">
       <div class="card-title">3. Fichier audio</div>
-      <div class="drop-zone" id="drop-zone"
-           onclick="document.getElementById('file-input').click()"
-           ondragover="onDragOver(event)"
-           ondragleave="onDragLeave(event)"
-           ondrop="onDrop(event)">
-        <span class="drop-icon">🎙️</span>
-        <p id="drop-label">Glissez votre enregistrement ou cliquez pour choisir</p>
-        <small>M4A (iPhone), MP3, WAV, MP4 — max 25 Mo</small>
+      <!-- Onglets mode saisie -->
+      <div class="result-tabs" style="margin-bottom:1rem">
+        <button class="tab-btn active" id="tab-text-btn" onclick="switchInputMode('text')">📝 Coller la transcription</button>
+        <button class="tab-btn" id="tab-audio-btn" onclick="switchInputMode('audio')">🎙️ Déposer un fichier audio</button>
       </div>
-      <input type="file" id="file-input" accept=".m4a,.mp3,.wav,.mp4,.ogg,.webm" onchange="onFileSelect(event)">
+
+      <!-- Mode texte (Whisper local) -->
+      <div id="input-text-mode">
+        <div class="field">
+          <label>Transcription Whisper (colle le texte ici)</label>
+          <textarea id="transcript-input" style="min-height:160px; font-size:13px" placeholder="Colle ici la transcription obtenue depuis Whisper GUI...&#10;&#10;Ex : Interlocuteur A : Bonjour Maître, je viens vous voir pour...&#10;Interlocuteur B : Bonjour, installez-vous..." oninput="checkReady()"></textarea>
+        </div>
+        <p style="font-size:11px; color:var(--text-3); margin-top:6px">📌 Workflow : enregistre sur iPhone → transfère sur PC → transcris avec Whisper GUI → colle ici</p>
+      </div>
+
+      <!-- Mode audio -->
+      <div id="input-audio-mode" class="hidden">
+        <div class="drop-zone" id="drop-zone"
+             onclick="document.getElementById('file-input').click()"
+             ondragover="onDragOver(event)"
+             ondragleave="onDragLeave(event)"
+             ondrop="onDrop(event)">
+          <span class="drop-icon">🎙️</span>
+          <p id="drop-label">Glissez votre enregistrement ou cliquez pour choisir</p>
+          <small>M4A (iPhone), MP3, WAV, MP4 — max 25 Mo</small>
+        </div>
+        <input type="file" id="file-input" accept=".m4a,.mp3,.wav,.mp4,.ogg,.webm" onchange="onFileSelect(event)">
+        <p style="font-size:11px; color:var(--text-3); margin-top:6px">⚠️ La transcription audio nécessite un plan Mistral payant. Préférez le mode "Coller la transcription".</p>
+      </div>
+
       <div id="setup-error" class="error-msg hidden"></div>
       <button class="btn-primary" id="btn-start" disabled onclick="startTranscription()">
-        ✦ Transcrire et générer le compte-rendu
+        ✦ Générer le compte-rendu
       </button>
     </div>
 
@@ -536,7 +556,17 @@ let deferredPrompt = null;
 let selectedType = null;
 let selectedFile = null;
 let partieCount = 0;
+let inputMode = 'text';
 let API_KEY = localStorage.getItem('mistral_api_key') || '';
+
+function switchInputMode(mode) {
+  inputMode = mode;
+  document.getElementById('input-text-mode').classList.toggle('hidden', mode !== 'text');
+  document.getElementById('input-audio-mode').classList.toggle('hidden', mode !== 'audio');
+  document.getElementById('tab-text-btn').classList.toggle('active', mode === 'text');
+  document.getElementById('tab-audio-btn').classList.toggle('active', mode === 'audio');
+  checkReady();
+}
 
 function initApp() {
   if (!API_KEY) {
@@ -713,7 +743,11 @@ ${transcript}`;
 }
 
 function checkReady() {
-  document.getElementById('btn-start').disabled = !(selectedType && selectedFile);
+  const hasType = !!selectedType;
+  const hasInput = inputMode === 'text'
+    ? (document.getElementById('transcript-input')?.value.trim().length > 20)
+    : !!selectedFile;
+  document.getElementById('btn-start').disabled = !(hasType && hasInput);
 }
 
 function onDragOver(e) { e.preventDefault(); document.getElementById('drop-zone').classList.add('dragover'); }
@@ -753,12 +787,21 @@ async function startTranscription() {
   document.getElementById('view-processing').classList.remove('hidden');
   setStep(3);
   try {
-    setProgress(10, 'Lecture du fichier audio…', 'Préparation en cours…');
-    await sleep(400);
-    setProgress(25, 'Transcription audio…', 'Envoi à l\'API de transcription…');
-    const transcript = await transcribeAudio();
-    setProgress(65, 'Transcription obtenue…', 'Analyse juridique et structuration…');
-    await sleep(300);
+    let transcript = '';
+    if (inputMode === 'text') {
+      // Mode texte : transcription déjà disponible
+      transcript = document.getElementById('transcript-input').value.trim();
+      setProgress(30, 'Transcription reçue…', 'Analyse juridique en cours…');
+      await sleep(300);
+    } else {
+      // Mode audio : transcription via Mistral
+      setProgress(10, 'Lecture du fichier audio…', 'Préparation en cours…');
+      await sleep(400);
+      setProgress(25, 'Transcription audio…', 'Envoi à l\'API Mistral…');
+      transcript = await transcribeAudio();
+    }
+    setProgress(60, 'Analyse juridique…', 'Génération du compte-rendu avec Mistral…');
+    await sleep(200);
     const summary = await generateSummary(transcript);
     setProgress(100, 'Compte-rendu prêt', 'Traitement terminé avec succès.');
     await sleep(500);
